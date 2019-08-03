@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.contrib.auth import get_user_model, login, logout
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -32,6 +33,7 @@ def login_success_view(request):
 
     user = get_user(data)
     login(request, user)
+    bot.send_message(chat_id=user.username, text=f"Successfully signed in on {settings.APP_URL}.")
     return redirect('core:user', user_id=user.username)
 
 
@@ -53,7 +55,7 @@ def user_forced_hook_view(request: HttpRequest, chat_id: str):
     if request.method == 'POST':
         if not verify_public_key(request):
             return HttpResponse('bad signature', status=400)
-        text = format_build_report({})
+        text = format_build_report(dict(request.POST))
         try:
             bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
         except BadRequest:
@@ -63,9 +65,9 @@ def user_forced_hook_view(request: HttpRequest, chat_id: str):
 
 
 def logout_view(request: HttpRequest):
-    u = request.user
-    if u.is_authenticated:
-        u.is_active = False
-        u.save()
+    user = request.user
+    if user.is_authenticated:
+        user.is_active = False
+        user.save()
     logout(request)
     return redirect('core:index')

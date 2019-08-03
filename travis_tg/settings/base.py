@@ -1,9 +1,11 @@
 import os
 from os import getenv
+from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = str(Path(os.path.abspath(__file__)).parents[2])
 
 SECRET_KEY = getenv('SECRET_KEY')
 DEBUG = getenv('DEBUG', '0') == '1'
@@ -11,7 +13,8 @@ DEBUG = getenv('DEBUG', '0') == '1'
 APP_URL = getenv('APP_URL')
 ALLOWED_HOSTS = []
 if APP_URL:
-    ALLOWED_HOSTS.append(APP_URL)
+    host = urlparse(APP_URL).netloc
+    ALLOWED_HOSTS.append(host)
 if DEBUG:
     ALLOWED_HOSTS.append('localhost')
 AUTH_USER_MODEL = 'core.User'

@@ -1,8 +1,8 @@
 import hashlib
 import hmac
+import json
 from datetime import datetime
 
-import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest
@@ -69,10 +69,11 @@ def get_user(data: dict):
 
 def verify_public_key(request: HttpRequest):
     # todo
-    requests.get('https://api.travis...')
+    # requests.get('https://api.travis...')
     return True
 
 
 def format_build_report(data: dict):
     # todo
-    return 'report'
+    report = json.dumps(data, indent=2)
+    return f'```report:\n{report}```'

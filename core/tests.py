@@ -7,7 +7,7 @@ from core.utils import render_index, get_message, get_user
 User = get_user_model()
 
 
-@pytest.mark.usefixtures('create_user')
+@pytest.mark.usefixtures('create_user', 'mock_bot')
 @pytest.mark.django_db
 class TestUtils:
     def test_render_index(self):

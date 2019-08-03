@@ -1,6 +1,7 @@
 import uuid
 from typing import Callable
 
+from telegram import User as TGUser, Bot
 import pytest
 from _pytest.fixtures import FixtureRequest
 from django.contrib.auth import get_user_model
@@ -30,3 +31,13 @@ def create_user(request: FixtureRequest):
         return user
 
     return append_to_cls(request, _factory, 'create_user')
+
+
+@pytest.fixture
+def mock_bot(mocker):
+    def get_me(self):
+        self.bot = TGUser(id='1234', first_name='bot_name', is_bot=True)
+        return self.bot
+
+    mocker.patch.object(Bot, 'get_me', get_me)
+    mocker.patch.object(Bot, 'send_message')

@@ -20,15 +20,11 @@
     },
     "APP_URL": {
       "description": "Heroku app url.",
-      "value": "https://CHANGE_ME_TO_YOUR_APP_NAME.herokuapps.com"
+      "value": "https://CHANGE_ME_TO_YOUR_APP_NAME.herokuapp.com"
     },
     "WEB_CONCURRENCY": {
       "description": "The number of processes to run.",
       "value": "4",
-      "required": false
-    },
-    "DEBUG": {
-      "value": "0",
       "required": false
     },
     "DISABLE_COLLECTSTATIC": {
