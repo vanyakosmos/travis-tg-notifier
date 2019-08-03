@@ -65,7 +65,11 @@ WSGI_APPLICATION = 'travis_tg.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
-DATABASES = {'default': dj_database_url.config(conn_max_age=600)}
+DATABASE_URL = getenv(
+    'DATABASE_URL',
+    'postgresql://postgres:postgres@localhost:5432/travis_tg_notifier',
+)
+DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
