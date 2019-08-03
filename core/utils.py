@@ -16,7 +16,7 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 from markdown import markdown
-from telegram import ParseMode
+from telegram import ParseMode, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.error import BadRequest
 
 from core.bot import bot
@@ -99,6 +99,10 @@ def send_report(request: HttpRequest, chat_id):
             text=text,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
+            reply_markup=InlineKeyboardMarkup.from_row([
+                InlineKeyboardButton('details', url=data['build_url']),
+                InlineKeyboardButton('diff', url=data['compare_url']),
+            ])
         )
     except BadRequest as e:
         return HttpResponse(str(e), status=400)

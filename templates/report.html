@@ -1,21 +1,12 @@
-{% if repository.url %}
-  <a href='{{ compare_url }}'>{{ repository.owner_name }}/{{ repository.name }}</a>
-{% else %}
-  <strong>{{ repository.owner_name }}/{{ repository.name }}</strong>
-{% endif %}
-{% if status == 0 %}
-  ✅ Build #{{ number }} completed successfully
-{% else %}
-  ❌ Build #{{ number }} failed
-{% endif %}
+{% load core %}
+{% if status == 0 %}✅{% else %}❌{% endif %} {% if repository.url %}<a href='{{ compare_url }}'>{{ repository.owner_name }}/{{ repository.name }}</a>{% else %}<strong>{{ repository.owner_name }}/{{ repository.name }}</strong>{% endif %}
+
+Build #{{ number }} {% if status == 0 %}completed successfully{% else %}failed{% endif %}
 Status: {{ status_message }}
 
-Duration: {{ duration }}
-Started : {{ started_at|date:'Y-m-d H:i:s' }}
-Finished: {{ finished_at|date:'Y-m-d H:i:s' }}
+Duration: {{ duration|duration }}
+Started : {{ started_at|date:'Y/m/d H:i:s' }}
+Finished: {{ finished_at|date:'Y/m/d H:i:s' }}
 
-Message: {{ message }}
 Author: {{ author_name }}
-
-<a href='{{ build_url }}'>> Details</a>
-<a href='{{ compare_url }}'>> Compare with previous commit</a>
+Message: "{{ message }}"

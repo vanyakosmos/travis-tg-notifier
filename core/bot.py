@@ -16,7 +16,7 @@ def handle_error(update: Update, context: CallbackContext):
 def command_start(update: Update, _: CallbackContext):
     bot.send_message(
         update.effective_message.chat_id,
-        "This bot can notify about build results on Travis CI. "
+        "This bot can notify about Travis CI build results. "
         "Just specify appropriate webhook in notifications settings in .travis.yml.\n\n"
         "Details: https://travis-tg.herokuapp.com/\n"
         "Github: https://github.com/vanyakosmos/travis-tg-notifier\n\n"
