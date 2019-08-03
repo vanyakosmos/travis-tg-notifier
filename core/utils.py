@@ -5,12 +5,10 @@ import json
 import logging
 from datetime import datetime
 
+import dateutil.parser
 import requests
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.serialization import load_pem_public_key
-from cryptography.hazmat.backends import default_backend
+from OpenSSL.crypto import verify, load_publickey, FILETYPE_PEM, X509
+from OpenSSL.crypto import Error as SignatureError
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest, HttpResponse
@@ -42,20 +40,20 @@ def render_index(request, **extra_context):
     )
 
 
-def get_message(data: dict):
+def get_tg_auth_payload(data: dict):
     return '\n'.join(map(
         lambda e: f"{e}={data[e]}",
         sorted(data),
     ))
 
 
-def validate_data(data: dict):
+def validate_tg_auth_data(data: dict):
     if 'hash' not in data:
         return False
     valid_hash = data.pop('hash')
-    string = get_message(data)
+    payload = get_tg_auth_payload(data)
     secret_key = hashlib.sha256(settings.TELEGRAM_BOT_TOKEN.encode()).digest()
-    hash = hmac.new(secret_key, string.encode(), digestmod=hashlib.sha256).hexdigest()
+    hash = hmac.new(secret_key, payload.encode(), digestmod=hashlib.sha256).hexdigest()
     return valid_hash == hash
 
 
@@ -79,67 +77,21 @@ def get_user(data: dict):
     return user
 
 
-def _verify_public_key(signature: bytes, payload: bytes, public_key: bytes):
-    public_key = load_pem_public_key(public_key, default_backend())
-    try:
-        public_key.verify(
-            signature,
-            payload,
-            padding.PSS(mgf=padding.MGF1(hashes.SHA1()), salt_length=padding.PSS.MAX_LENGTH),
-            hashes.SHA256(),
-        )
-        return True
-    except InvalidSignature:
-        return False
-
-
-def get_public_key():
-    data = requests.get('https://api.travis-ci.com/config').json()
-    public_key = data['config']['notifications']['webhook']['public_key']
-    return public_key
-
-
-def verify_public_key(request: HttpRequest):
-    logger.info(request.META)
-    if 'SIGNATURE' not in request.META:
-        return False
-    signature = base64.b64decode(request.META['SIGNATURE'].encode())
-    logger.debug(f'signature: {signature}')
-
-    payload = request.GET['payload']
-    logger.debug(f'payload: {payload[:100]}...')
-
-    public_key = get_public_key()
-    logger.debug(f'public_key: {public_key}')
-    valid = _verify_public_key(
-        signature,
-        payload.encode(),
-        public_key.encode(),
-    )
-    logger.info(f"VALID: {valid}")
-    return True  # fixme
-
-
 def format_build_report(data: dict):
-    logger.info(data)
-    # for field in ['started_at', 'finished_at', 'committed_at']:
-    #     data[field] = datetime.strptime(data[field], "%Y-%m-%dT%H:%M:%S%z")
-    return render_to_string('report.html', context=data)  # fixme
-
-
-def validate(request: HttpRequest):
-    if 'payload' not in request.GET:
-        return HttpResponse('not payload', status=400)
-    if not verify_public_key(request):
-        return HttpResponse('bad signature', status=400)
+    for field in ['started_at', 'finished_at', 'committed_at']:
+        data[field] = dateutil.parser.parse(data[field])
+    return render_to_string('report.html', context=data)
 
 
 def send_report(request: HttpRequest, chat_id):
-    resp = validate(request)
-    if resp:
-        return resp
+    if 'payload' not in request.POST:
+        return HttpResponse('no payload', status=400)
 
-    data = json.loads(request.GET['payload'])
+    tsc = TravisSignatureChecker()
+    if not tsc.validate(request):
+        return HttpResponse('bad signature', status=400)
+
+    data = json.loads(request.POST['payload'])
     text = format_build_report(data)
     try:
         bot.send_message(
@@ -148,3 +100,54 @@ def send_report(request: HttpRequest, chat_id):
     except BadRequest as e:
         return HttpResponse(str(e), status=400)
     return HttpResponse(text, 'text/html')
+
+
+class TravisSignatureChecker:
+    def validate(self, request: HttpRequest) -> bool:
+        signature = self.get_signature(request)
+        payload = request.POST['payload']
+        for public_key in self.gen_public_key():
+            if not public_key:
+                continue
+            return self.validate_signature(signature, payload, public_key)
+        logger.debug("problem with fetching public keys")
+        return False
+
+    def validate_signature(self, signature, payload, public_key):
+        try:
+            self.check_authorized(signature, public_key, payload)
+            return True
+        except SignatureError as e:
+            logger.debug(f"invalid signature: {e}")
+            return False
+
+    def check_authorized(self, signature, public_key, payload):
+        """
+        Convert the PEM encoded public key to a format palatable for pyOpenSSL,
+        then verify the signature
+        """
+        pkey_public_key = load_publickey(FILETYPE_PEM, public_key)
+        certificate = X509()
+        certificate.set_pubkey(pkey_public_key)
+        verify(certificate, signature, payload, 'sha1')
+
+    def get_signature(self, request):
+        """
+        Extract the raw bytes of the request signature provided by travis
+        """
+        signature = request.META['HTTP_SIGNATURE']
+        return base64.b64decode(signature)
+
+    def gen_public_key(self):
+        """
+        Fetch public key for public and private repos.
+        """
+        for url in ['https://api.travis-ci.org/config', 'https://api.travis-ci.com/config']:
+            try:
+                response = requests.get(url, timeout=10.0)
+                response.raise_for_status()
+            except requests.RequestException as e:
+                logger.debug(e)
+                yield None
+            else:
+                yield response.json()['config']['notifications']['webhook']['public_key']

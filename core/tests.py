@@ -1,13 +1,40 @@
 import pytest
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from OpenSSL.crypto import (
+    sign,
+    load_privatekey,
+    FILETYPE_PEM,
+    TYPE_RSA,
+    PKey,
+    dump_privatekey,
+    dump_publickey,
+)
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest, HttpResponse
 
-from core.utils import _verify_public_key, get_message, get_user, render_index
+from core.utils import get_tg_auth_payload, get_user, render_index, TravisSignatureChecker
 
 User = get_user_model()
+
+
+def generate_keys():
+    """
+    Generate a new RSA key, return the PEM encoded public and private keys
+    """
+    pkey = PKey()
+    pkey.generate_key(TYPE_RSA, 2048)
+    public_key = dump_publickey(FILETYPE_PEM, pkey)
+    private_key = dump_privatekey(FILETYPE_PEM, pkey)
+    return public_key, private_key
+
+
+def generate_signature(pem_private_key, content):
+    """
+    Given a private key and some content, generate a base64 encoded signature for that content.
+    Use this during testing in combination with the public key to mimic the travis API.
+    """
+    private_key = load_privatekey(FILETYPE_PEM, pem_private_key)
+    signature = sign(private_key, content, str('sha1'))
+    return signature
 
 
 @pytest.mark.usefixtures('create_user', 'mock_bot')
@@ -19,8 +46,8 @@ class TestUtils:
         assert isinstance(res, HttpResponse)
         assert 'usage' in res.content.decode().lower()
 
-    def test_get_message(self):
-        s = get_message({'a': '1', 'c': '2', 'b': '3'})
+    def test_get_tg_auth_payload(self):
+        s = get_tg_auth_payload({'a': '1', 'c': '2', 'b': '3'})
         assert s == 'a=1\nb=3\nc=2'
 
     def test_get_user_invalid(self):
@@ -42,22 +69,8 @@ class TestUtils:
         assert User.objects.count() == 1
 
     def test_verify_public_key(self):
-        payload = b'json payload'
-        private_key = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=2048,
-            backend=default_backend(),
-        )
-        signature = private_key.sign(
-            payload,
-            padding.PSS(mgf=padding.MGF1(hashes.SHA1()), salt_length=padding.PSS.MAX_LENGTH),
-            hashes.SHA256(),
-        )
-        public_key = private_key.public_key()
-        pub = public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
-
-        assert _verify_public_key(signature, payload, pub)
-        assert not _verify_public_key(signature + b'a', payload, pub)
+        payload = '{"foo": "bar"}'
+        pub, pri = generate_keys()
+        signature = generate_signature(pri, payload)
+        tsc = TravisSignatureChecker()
+        assert tsc.validate_signature(signature, payload, pub)

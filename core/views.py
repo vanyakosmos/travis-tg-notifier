@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt
 
 from core.bot import bot
-from core.utils import get_user, render_index, send_report, validate_data
+from core.utils import get_user, render_index, send_report, validate_tg_auth_data
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -21,7 +21,7 @@ def index_view(request: HttpRequest):
 
 def login_success_view(request):
     data = {key: value for key, value in request.GET.items()}
-    if not validate_data(data):
+    if not validate_tg_auth_data(data):
         return HttpResponse("invalid hash", status=400)
 
     user = get_user(data)
