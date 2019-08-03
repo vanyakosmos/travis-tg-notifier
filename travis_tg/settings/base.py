@@ -107,4 +107,37 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
+LOGGING_LEVEL = getenv('LOGGING_LEVEL', 'DEBUG')
+LOGGING_LEVEL_ROOT = getenv('LOGGING_LEVEL_ROOT', 'INFO')
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': f'[%(asctime)s] %(levelname)s %(name)27s:%(lineno)-3d > %(message)s',
+            'datefmt': "%Y/%m/%d %H:%M:%S"
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': LOGGING_LEVEL,
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        },
+    },
+    'loggers': {
+        module: {
+            'handlers': ['console'],
+            'level': LOGGING_LEVEL,
+            'propagate': False,
+        }
+        for module in ['core']
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': LOGGING_LEVEL_ROOT,
+        'propagate': False,
+    },
+}
+
 TELEGRAM_BOT_TOKEN = getenv('TELEGRAM_BOT_TOKEN')

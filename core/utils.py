@@ -1,12 +1,12 @@
 import hashlib
 import hmac
-import json
 from datetime import datetime
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 from markdown import markdown
 
@@ -74,6 +74,6 @@ def verify_public_key(request: HttpRequest):
 
 
 def format_build_report(data: dict):
-    # todo
-    report = json.dumps(data, indent=2)
-    return f'```report:\n{report}```'
+    for field in ['started_at', 'finished_at', 'committed_at']:
+        data[field] = datetime.strptime(data[field], "%Y-%m-%dT%H:%M:%S%z")
+    return render_to_string('report.html', context=data)

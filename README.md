@@ -31,9 +31,3 @@ notifications:
   webhooks:
     - https://travis-tg.herokuapps.com/u/TELEGRAM_ID/force
 ```
-
-## Caveats
-
-Similarly to problem with emails everyone who knows webhook url can use it in their builds. 
-The good news is that "attackers" can't simulate travis-ci requests (ie use it out travis build scope) 
-because webhook endpoint verifies signature from request against valid public key from travis-ci.

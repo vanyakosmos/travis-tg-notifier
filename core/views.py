@@ -1,9 +1,11 @@
+import json
 import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model, login, logout
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.views.decorators.csrf import csrf_exempt
 from telegram import ParseMode
 from telegram.error import BadRequest
 
@@ -37,6 +39,7 @@ def login_success_view(request):
     return redirect('core:user', user_id=user.username)
 
 
+@csrf_exempt
 def user_hook_view(request: HttpRequest, user_id: str):
     if request.method == 'POST':
         user = get_object_or_404(User, username=user_id, is_active=True)
@@ -45,22 +48,32 @@ def user_hook_view(request: HttpRequest, user_id: str):
         text = format_build_report({})
         try:
             bot.send_message(chat_id=user.username, text=text, parse_mode=ParseMode.MARKDOWN)
-        except BadRequest:
-            return HttpResponse('something is wrong', status=400)
+        except BadRequest as e:
+            return HttpResponse(str(e), status=400)
         return HttpResponse('ok')
     return render_index(request)
 
 
+@csrf_exempt
 def user_forced_hook_view(request: HttpRequest, chat_id: str):
     if request.method == 'POST':
+        if 'payload' not in request.GET:
+            return HttpResponse('not payload', status=400)
         if not verify_public_key(request):
             return HttpResponse('bad signature', status=400)
-        text = format_build_report(dict(request.POST))
+
+        data = json.loads(request.GET['payload'])
+        text = format_build_report(data)
         try:
-            bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
-        except BadRequest:
-            return HttpResponse('invalid id', status=400)
-        return HttpResponse('ok')
+            bot.send_message(
+                chat_id=chat_id,
+                text=text,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True
+            )
+        except BadRequest as e:
+            return HttpResponse(str(e), status=400)
+        return HttpResponse(text, 'text/html')
     return redirect('core:index')
 
 
