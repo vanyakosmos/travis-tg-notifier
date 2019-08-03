@@ -27,10 +27,6 @@
       "description": "The number of processes to run.",
       "value": "4",
       "required": false
-    },
-    "DISABLE_COLLECTSTATIC": {
-      "description": "Heroku will try automatically collect static files, but we don't have any.",
-      "value": "1"
     }
   },
   "addons": [

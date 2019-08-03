@@ -128,3 +128,4 @@ dmypy.json
 !.envs/.examples/*
 !.gitkeep
 docker-compose.override.yml
+staticfiles
