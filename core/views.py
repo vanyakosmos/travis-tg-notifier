@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model, login, logout
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from telegram import ParseMode
+from telegram.error import BadRequest
 
 from core.bot import bot
 from core.utils import (
@@ -40,9 +41,25 @@ def user_hook_view(request: HttpRequest, user_id: str):
         if not verify_public_key(request):
             return HttpResponse('bad signature', status=400)
         text = format_build_report({})
-        bot.send_message(chat_id=user.username, text=text, parse_mode=ParseMode.MARKDOWN)
+        try:
+            bot.send_message(chat_id=user.username, text=text, parse_mode=ParseMode.MARKDOWN)
+        except BadRequest:
+            return HttpResponse('something is wrong', status=400)
         return HttpResponse('ok')
     return render_index(request)
+
+
+def user_forced_hook_view(request: HttpRequest, chat_id: str):
+    if request.method == 'POST':
+        if not verify_public_key(request):
+            return HttpResponse('bad signature', status=400)
+        text = format_build_report({})
+        try:
+            bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
+        except BadRequest:
+            return HttpResponse('invalid id', status=400)
+        return HttpResponse('ok')
+    return redirect('core:index')
 
 
 def logout_view(request: HttpRequest):
