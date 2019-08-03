@@ -1,0 +1,23 @@
+version: "3.7"
+
+
+services:
+  db:
+    image: postgres:11.1
+    hostname: db
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    env_file: .envs/.production/postgres.env
+
+  app:
+    build: .
+    image: travis_notifier_app
+    command: ["./scripts/run.sh", "prod"]
+    env_file:
+      - .envs/.production/app.env
+      - .envs/.production/postgres.env
+    depends_on:
+      - db
+
+volumes:
+  dbdata:

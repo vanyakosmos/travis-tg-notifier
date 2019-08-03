@@ -1,0 +1,37 @@
+{
+  "name": "Travis CI telegram notifier.",
+  "repository": "https://github.com/vanyakosmos/travis-tg-notifier",
+  "keywords": ["python", "django", "travis-ci", "telegram", "telegram-bot"],
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "scripts": {
+    "web": "./scripts/run.sh prod"
+  },
+  "env": {
+    "SECRET_KEY": {
+      "description": "Django's secret key.",
+      "generator": "secret"
+    },
+    "WEB_CONCURRENCY": {
+      "description": "The number of processes to run.",
+      "value": "4",
+      "required": false
+    },
+    "TELEGRAM_BOT_TOKEN": {
+      "description": "Telegram bot toke obtained from @BotFather."
+    },
+    "APP_URL": {
+      "description": "Heroku app url.",
+      "value": "https://travis-tg.herokuapps.com"
+    },
+    "DEBUG": {
+      "value": "0"
+    }
+  },
+  "addons": [
+    "heroku-postgresql"
+  ]
+}
