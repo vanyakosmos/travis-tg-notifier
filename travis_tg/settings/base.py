@@ -13,6 +13,7 @@ DEBUG = getenv('DEBUG', '0') == '1'
 APP_URL = getenv('APP_URL')
 ALLOWED_HOSTS = []
 if APP_URL:
+    APP_URL = APP_URL.strip('/')
     host = urlparse(APP_URL).netloc
     ALLOWED_HOSTS.append(host)
 if DEBUG:
@@ -141,3 +142,7 @@ LOGGING = {
 }
 
 TELEGRAM_BOT_TOKEN = getenv('TELEGRAM_BOT_TOKEN')
+if APP_URL:
+    WEBHOOK_URL = '/'.join([APP_URL, 'webhook', TELEGRAM_BOT_TOKEN])
+else:
+    WEBHOOK_URL = None

@@ -22,8 +22,8 @@ notifications:
 ## Usage without telegram authentication or in groups
 
 - initiate dialog with [@TravisCINotifierBot](https://t.me/TravisCINotifierBot) or add it to the chat.
-- find out telegram id of group chat (or yours). Try [@JsonDumpBot](https://t.me/JsonDumpBot) 
-- add `/force` to the webhook url
+- type `/webhook` and receive webhook url for current chat
+- copy-n-paste webhook url into `.travis.yml`
 
 ```
 notifications:

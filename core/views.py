@@ -1,3 +1,4 @@
+import json
 import logging
 
 from django.conf import settings
@@ -5,8 +6,9 @@ from django.contrib.auth import get_user_model, login, logout
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt
+from telegram import Update
 
-from core.bot import bot
+from core.bot import bot, dispatcher
 from core.utils import get_user, render_index, send_report, validate_tg_auth_data
 
 logger = logging.getLogger(__name__)
@@ -54,3 +56,14 @@ def logout_view(request: HttpRequest):
         user.save()
     logout(request)
     return redirect('core:index')
+
+
+@csrf_exempt
+def bot_webhook_view(request: HttpRequest):
+    request.build_absolute_uri()
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        update = Update.de_json(data, bot)
+        dispatcher.process_update(update)
+        return HttpResponse('ok')
+    return HttpResponse(status=404)
