@@ -6,12 +6,21 @@ from django.conf import settings
 from django.contrib.auth import login, logout, get_user_model
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils.safestring import mark_safe
+from markdown import markdown
 
 User = get_user_model()
 
 
+def render_index(request):
+    with open('README.md', 'r') as f:
+        readme = markdown(f.read(), extensions=['fenced_code'])
+    readme = mark_safe(readme)
+    return render(request, 'index.html', context={'readme': readme})
+
+
 def index_view(request: HttpRequest):
-    return render(request, 'index.html')
+    return render_index(request)
 
 
 def validate_data(data: dict):
@@ -60,11 +69,13 @@ def user_hook_view(request: HttpRequest, user_id: str):
         # todo: verify public key
         # send status to user
         return HttpResponse('ok')
-    return render(request, 'index.html')
+    return render_index(request)
 
 
 def logout_view(request):
+    u = request.user
+    if isinstance(u, User):
+        u.is_active = False
+        u.save()
     logout(request)
-    request.user.is_active = False
-    request.user.save()
     return redirect('core:index')

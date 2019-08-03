@@ -20,6 +20,7 @@
 
     .content {
       margin: 50px auto;
+      max-width: 600px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -43,13 +44,48 @@
       cursor: pointer;
     }
 
-    .base-url {
+    #copypasta {
       font-size: 20px;
-      margin: 0;
+      margin: 20px 0;
+      cursor: pointer;
     }
 
     .info {
       margin-top: 20px
+    }
+  </style>
+
+  <style>
+    .tooltip {
+      position: relative;
+    }
+
+    .tooltip .tooltiptext {
+      visibility: visible;
+      width: 140px;
+      background-color: #555;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 150%;
+      left: 50%;
+      margin-left: -75px;
+      opacity: 1;
+      transition: opacity 0.3s;
+    }
+
+    .tooltip .tooltiptext::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #555 transparent transparent transparent;
     }
   </style>
 </head>
@@ -63,7 +99,11 @@
     </form>
     <div class="info">
       Use this url as webhook in .travis.yml notifications section:
-      <pre class="base-url">{{ request.build_absolute_uri }}</pre>
+      <div class="tooltip">
+        <span class="tooltiptext" id="tooltip" style="display: none;"></span>
+        <pre id="copypasta" onclick="copyText()">notifications:
+  webhooks: {{ request.build_absolute_uri }}</pre>
+      </div>
     </div>
   {% else %}
     <script
@@ -74,8 +114,31 @@
         data-auth-url="/login_success"
         data-request-access="write"
     ></script>
+    <div>
+    {{ readme }}
+    </div>
   {% endif %}
 </div>
+
+<script>
+  function copyText() {
+    const range = document.createRange();
+    range.selectNode(document.getElementById("copypasta"));
+    window.getSelection().removeAllRanges(); // clear current selection
+    window.getSelection().addRange(range); // to select text
+    document.execCommand("copy");
+    window.getSelection().removeAllRanges();
+
+    const tooltip = document.getElementById("tooltip");
+    tooltip.innerHTML = "Copied!";
+    tooltip.style.display = 'block';
+
+    setTimeout(() => {
+      tooltip.style.display = 'none';
+    }, 1000)
+  }
+
+</script>
 
 </body>
 </html>

@@ -15,20 +15,25 @@
       "description": "Django's secret key.",
       "generator": "secret"
     },
-    "WEB_CONCURRENCY": {
-      "description": "The number of processes to run.",
-      "value": "4",
-      "required": false
-    },
     "TELEGRAM_BOT_TOKEN": {
       "description": "Telegram bot toke obtained from @BotFather."
     },
     "APP_URL": {
       "description": "Heroku app url.",
-      "value": "https://travis-tg.herokuapps.com"
+      "value": "https://CHANGE_ME_TO_YOUR_APP_NAME.herokuapps.com"
+    },
+    "WEB_CONCURRENCY": {
+      "description": "The number of processes to run.",
+      "value": "4",
+      "required": false
     },
     "DEBUG": {
-      "value": "0"
+      "value": "0",
+      "required": false
+    },
+    "DISABLE_COLLECTSTATIC": {
+      "description": "Heroku will try automatically collect static files, but we don't have any.",
+      "value": "1"
     }
   },
   "addons": [

@@ -4,9 +4,10 @@
 
 ## Usage
 
-- go to https://travis-tg.herokuapps.com
+- go to [https://travis-tg.herokuapps.com](https://travis-tg.herokuapps.com)
 - login via telegram
 - use generated url as webhook in `.travis.yml`:
+
 ```
 notifications:
   webhooks:
