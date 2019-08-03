@@ -12,14 +12,16 @@ from markdown import markdown
 User = get_user_model()
 
 
-def render_index(request):
+def render_index(request, **extra_context):
     with open('README.md', 'r') as f:
         readme = markdown(f.read(), extensions=['fenced_code'])
     readme = mark_safe(readme)
-    return render(request, 'index.html', context={'readme': readme})
+    return render(request, 'index.html', context={'readme': readme, **extra_context})
 
 
 def index_view(request: HttpRequest):
+    if request.user.is_authenticated:
+        return redirect('core:user', user_id=request.user.username)
     return render_index(request)
 
 
@@ -74,7 +76,7 @@ def user_hook_view(request: HttpRequest, user_id: str):
 
 def logout_view(request):
     u = request.user
-    if isinstance(u, User):
+    if u.is_authenticated:
         u.is_active = False
         u.save()
     logout(request)

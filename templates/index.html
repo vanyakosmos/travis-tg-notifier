@@ -97,14 +97,6 @@
     <form action="{% url 'core:logout' %}">
       <button class="logout-btn">Logout</button>
     </form>
-    <div class="info">
-      Use this url as webhook in .travis.yml notifications section:
-      <div class="tooltip">
-        <span class="tooltiptext" id="tooltip" style="display: none;"></span>
-        <pre id="copypasta" onclick="copyText()">notifications:
-  webhooks: {{ request.build_absolute_uri }}</pre>
-      </div>
-    </div>
   {% else %}
     <script
         async
@@ -114,10 +106,21 @@
         data-auth-url="/login_success"
         data-request-access="write"
     ></script>
-    <div>
-    {{ readme }}
+  {% endif %}
+  {% if user.is_authenticated and request.resolver_match.url_name == "user" %}
+    <div class="info">
+      Use url below as webhook in .travis.yml notifications section (click to copy).
+      Logout to stop receiving notifications (or just remove webhook from travis config, or block bot).
+      <div class="tooltip">
+        <span class="tooltiptext" id="tooltip" style="display: none;"></span>
+        <pre id="copypasta" onclick="copyText()">notifications:
+  webhooks: {{ request.build_absolute_uri }}</pre>
+      </div>
     </div>
   {% endif %}
+  <div class="info">
+    {{ readme }}
+  </div>
 </div>
 
 <script>
