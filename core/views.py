@@ -32,10 +32,12 @@ def login_success_view(request):
 
 @csrf_exempt
 def user_hook_view(request: HttpRequest, user_id: str):
+    user = get_object_or_404(User, username=user_id, is_active=True)
     if request.method == 'POST':
-        user = get_object_or_404(User, username=user_id, is_active=True)
         return send_report(request, user.username)
-    return render_index(request)
+    if user == request.user:
+        return render_index(request)
+    return redirect('core:index')
 
 
 @csrf_exempt

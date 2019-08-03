@@ -2,12 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="MobileOptimized" content="176">
-  <meta name="HandheldFriendly" content="True">
-  <meta name="robots" content="noindex, nofollow">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
   <title>Travis CI Telegram Notifier</title>
 
@@ -19,12 +14,8 @@
     }
 
     .content {
-      margin: 50px auto;
+      margin: 20px auto;
       max-width: 600px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
     }
 
     .logout-btn {
@@ -55,6 +46,22 @@
 
     .info {
       margin-top: 20px
+    }
+
+    .login {
+      text-align: center;
+    }
+
+    pre, code {
+      overflow-y: scroll;
+      border-radius: 10px;
+      background: whitesmoke;
+      padding: 5px;
+      line-height: 24px;
+    }
+
+    a, a:visited {
+      color: #54a9eb;
     }
   </style>
 
@@ -96,24 +103,27 @@
 <body>
 
 <div class="content">
-  {% if user.is_authenticated %}
-    <form action="{% url 'core:logout' %}">
-      <button class="logout-btn">Logout</button>
-    </form>
-  {% else %}
-    <script
-        async
-        src="https://telegram.org/js/telegram-widget.js?7"
-        data-telegram-login="{{ bot_username }}"
-        data-size="large"
-        data-auth-url="/login_success"
-        data-request-access="write"
-    ></script>
-  {% endif %}
+  <div class="info login">
+    {% if user.is_authenticated %}
+      <form action="{% url 'core:logout' %}">
+        <button class="logout-btn">Logout</button>
+      </form>
+    {% else %}
+      <script
+          async
+          src="https://telegram.org/js/telegram-widget.js?7"
+          data-telegram-login="{{ bot_username }}"
+          data-size="large"
+          data-auth-url="/login_success"
+          data-request-access="write"
+      ></script>
+    {% endif %}
+  </div>
   {% if user.is_authenticated and request.resolver_match.url_name == "user" %}
     <div class="info">
       Use url below as webhook in .travis.yml notifications section (click to copy).
-      Logout to stop receiving notifications (or just remove webhook from travis config, or block bot).
+      Logout to stop receiving notifications (or just remove webhook from travis config, or block
+      bot).
       <div class="tooltip">
         <span class="tooltiptext" id="tooltip" style="display: none;"></span>
         <pre id="copypasta" onclick="copyText()">notifications:

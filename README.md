@@ -21,9 +21,9 @@ notifications:
 
 ## Usage without telegram authentication or in groups
 
-- find out your (or group's) telegram id (try [@JsonDumpBot](https://t.me/JsonDumpBot)) 
 - initiate dialog with [@TravisCINotifierBot](https://t.me/TravisCINotifierBot) or add it to the chat.
-- add `/force` for webhook
+- find out telegram id of group chat (or yours). Try [@JsonDumpBot](https://t.me/JsonDumpBot) 
+- add `/force` to the webhook url
 
 ```
 notifications:

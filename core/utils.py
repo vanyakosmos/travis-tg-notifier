@@ -95,7 +95,10 @@ def send_report(request: HttpRequest, chat_id):
     text = format_build_report(data)
     try:
         bot.send_message(
-            chat_id=chat_id, text=text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
         )
     except BadRequest as e:
         return HttpResponse(str(e), status=400)
