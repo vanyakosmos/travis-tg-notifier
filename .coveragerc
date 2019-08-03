@@ -1,0 +1,19 @@
+[run]
+omit =
+  manage.py
+  conftest.py
+  */migrations/*
+  */test*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __str__
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == '__main__':
+
+precision = 2
+show_missing = True
+sort = Miss
