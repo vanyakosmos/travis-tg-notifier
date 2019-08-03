@@ -1,4 +1,4 @@
 # noinspection PyUnresolvedReferences
 from .base import *
 
-DEBUG = 0
+DEBUG = False
