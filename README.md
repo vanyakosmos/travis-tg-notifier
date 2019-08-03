@@ -19,12 +19,11 @@ notifications:
 - after each build you will receive notification from [@TravisCINotifierBot](https://t.me/TravisCINotifierBot).
 
 
-## Usage 2
+## Usage without telegram authentication or in groups
 
-If you already know your telegram id (check it with [@JsonDumpBot](https://t.me/JsonDumpBot)) 
-and you don't want to use auth then just append `/force` to the webhook.
-
-You can also use this endpoint to post notifications into group chats (bot must be present in those groups).
+- find out your (or group's) telegram id (try [@JsonDumpBot](https://t.me/JsonDumpBot)) 
+- initiate dialog with [@TravisCINotifierBot](https://t.me/TravisCINotifierBot) or add it to the chat.
+- add `/force` for webhook
 
 ```
 notifications:

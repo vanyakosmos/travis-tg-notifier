@@ -1,2 +1,2 @@
 release: ./scripts/release.sh
-web: ./scripts/run.sh prod
+web: ./scripts/run.sh dev

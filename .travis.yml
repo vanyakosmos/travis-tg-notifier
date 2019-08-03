@@ -3,6 +3,8 @@ language: python
 
 python: 3.6
 
+cache: pip
+
 services:
   - postgresql
 
@@ -24,4 +26,4 @@ deploy:
 
 notifications:
   webhooks:
-    - https://travis-tg.herokuapp.com/
+    - https://travis-tg.herokuapp.com/u/89599420
