@@ -1,3 +1,8 @@
+import base64
+import hashlib
+import hmac
+import json
+
 import pytest
 from OpenSSL.crypto import (
     sign,
@@ -8,10 +13,13 @@ from OpenSSL.crypto import (
     dump_privatekey,
     dump_publickey,
 )
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest, HttpResponse
+from django.urls import reverse
 
-from core.utils import get_tg_auth_payload, get_user, render_index, TravisSignatureChecker
+from core.utils import get_tg_auth_payload, get_user, render_index, TravisSignatureChecker, \
+    send_report
 
 User = get_user_model()
 
@@ -37,7 +45,6 @@ def generate_signature(pem_private_key, content):
     return signature
 
 
-@pytest.mark.usefixtures('create_user', 'mock_bot')
 @pytest.mark.django_db
 class TestUtils:
     def test_render_index(self):
@@ -74,3 +81,141 @@ class TestUtils:
         signature = generate_signature(pri, payload)
         tsc = TravisSignatureChecker()
         assert tsc.validate_signature(signature, payload, pub)
+
+    def test_send_report(self, mocker):
+        mocker.patch.object(TravisSignatureChecker, 'validate', return_value=True)
+        req = HttpRequest()
+        req.POST['payload'] = json.dumps({
+            'duration': 5,
+            'started_at': '2019-08-04T00:23:38Z',
+            'finished_at': '2019-08-04T00:23:38Z',
+            'committed_at': '2019-08-04T00:23:38Z',
+            'build_url': 'example.com',
+            'compare_url': 'example.com',
+        })
+        res = send_report(req, chat_id='1111')
+        assert 'build' in res.content.decode().lower()
+        assert res.status_code == 200
+
+    def test_tsc_gen_public_key(self):
+        tsc = TravisSignatureChecker()
+        pubs = list(tsc.gen_public_key())
+        assert len(pubs) == 2
+        assert all(pubs)
+
+    def test_tsc_validation(self, mocker):
+        payload = '{"foo": "bar"}'
+        pub, pri = generate_keys()
+        signature = generate_signature(pri, payload)
+        tsc = TravisSignatureChecker()
+        req = HttpRequest()
+        req.POST['payload'] = payload
+        req.META['HTTP_SIGNATURE'] = base64.b64encode(signature)
+        mocker.patch.object(tsc, 'gen_public_key', return_value=[pub])
+        assert tsc.validate(req)
+
+
+@pytest.mark.django_db
+class TestViews:
+    def test_index_view(self):
+        url = reverse('core:index')
+        res = self.client.get(url)
+        assert 'usage' in res.content.decode().lower()
+
+    def test_index_view_auth(self):
+        user = self.create_user()
+        self.client.force_login(user)
+        url = reverse('core:index')
+        res = self.client.get(url)
+        assert res.status_code == 302
+
+    def test_login_success_view_bad_hash(self):
+        url = reverse('core:login_success')
+        res = self.client.get(url, {'hash': 'foo', 'id': '1234'})
+        assert res.status_code == 400
+
+    def test_login_success_view(self):
+        data = {'id': '1234', 'first_name': 'name'}
+        payload = get_tg_auth_payload(data)
+        secret_key = hashlib.sha256(settings.TELEGRAM_BOT_TOKEN.encode()).digest()
+        hash = hmac.new(secret_key, payload.encode(), digestmod=hashlib.sha256).hexdigest()
+
+        assert User.objects.count() == 0
+
+        url = reverse('core:login_success')
+        res = self.client.get(url, {'hash': hash, **data}, follow=True)
+        assert res.status_code == 200
+        assert User.objects.get(username=data['id'])
+
+    def test_user_hook_view_404(self):
+        url = reverse('core:user', kwargs={'user_id': '1234'})
+        res = self.client.get(url)
+        assert res.status_code == 404
+
+    def test_user_hook_view_another_user(self):
+        self.create_user(username='1234')
+
+        url = reverse('core:user', kwargs={'user_id': '1234'})
+        res = self.client.get(url)
+        assert res.status_code == 302
+
+        user = self.create_user(username='4321')
+        self.client.force_login(user)
+        url = reverse('core:user', kwargs={'user_id': '1234'})
+        res = self.client.get(url)
+        assert res.status_code == 302
+
+    def test_user_hook_view_self(self):
+        user = self.create_user(username='1234')
+        self.client.force_login(user)
+        url = reverse('core:user', kwargs={'user_id': '1234'})
+        res = self.client.get(url)
+        assert res.status_code == 200
+
+    def test_user_hook_view_report_no_payload(self):
+        user = self.create_user(username='1234')
+        self.client.force_login(user)
+        url = reverse('core:user', kwargs={'user_id': '1234'})
+        res = self.client.post(url)
+        assert res.status_code == 400
+
+    def test_user_forced_hook_view(self):
+        url = reverse('core:forced', kwargs={'chat_id': '1234'})
+        res = self.client.get(url, follow=True)
+        assert res.status_code == 200
+        assert res.redirect_chain[-1][0] == reverse('core:index')
+
+    def test_user_forced_hook_view_self(self):
+        user = self.create_user(username='1234')
+        self.client.force_login(user)
+        url = reverse('core:forced', kwargs={'chat_id': '1234'})
+        res = self.client.get(url, follow=True)
+        assert res.status_code == 200
+        assert res.redirect_chain[-1][0] == reverse('core:user', kwargs={'user_id': '1234'})
+
+    def test_logout_view_anon(self):
+        url = reverse('core:logout')
+        res = self.client.get(url, follow=True)
+        assert res.status_code == 200
+        assert res.redirect_chain[-1][0] == reverse('core:index')
+
+    def test_logout_view(self):
+        user = self.create_user(username='1234')
+        self.client.force_login(user)
+
+        url = reverse('core:logout')
+        res = self.client.get(url, follow=True)
+        assert res.status_code == 200
+
+        user.refresh_from_db()
+        assert not user.is_active
+
+    def test_bot_webhook_view_404(self):
+        url = reverse('core:webhook')
+        res = self.client.get(url)
+        assert res.status_code == 404
+
+    def test_bot_webhook_view(self):
+        url = reverse('core:webhook')
+        res = self.client.post(url, {'update_id': '1234'}, content_type='application/json')
+        assert res.status_code == 200

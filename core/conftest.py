@@ -20,7 +20,7 @@ def append_to_cls(request: FixtureRequest, func: Callable, name: str = None):
     return func
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope='class', autouse=True)
 def create_user(request: FixtureRequest):
     def _factory(**kwargs):
         fields = {
@@ -33,7 +33,7 @@ def create_user(request: FixtureRequest):
     return append_to_cls(request, _factory, 'create_user')
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_bot(mocker):
     def get_me(self):
         self.bot = TGUser(id='1234', first_name='bot_name', is_bot=True)
@@ -41,3 +41,8 @@ def mock_bot(mocker):
 
     mocker.patch.object(Bot, 'get_me', get_me)
     mocker.patch.object(Bot, 'send_message')
+
+
+@pytest.fixture(autouse=True)
+def auto_client(request: FixtureRequest, client):
+    return append_to_cls(request, client, 'client')
