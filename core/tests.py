@@ -210,6 +210,17 @@ class TestViews:
         user.refresh_from_db()
         assert not user.is_active
 
+    def test_logout_view_staff(self):
+        user = self.create_user(username='1234', is_staff=True)
+        self.client.force_login(user)
+
+        url = reverse('core:logout')
+        res = self.client.get(url, follow=True)
+        assert res.status_code == 200
+
+        user.refresh_from_db()
+        assert user.is_active
+
     def test_bot_webhook_view_404(self):
         url = reverse('core:webhook')
         res = self.client.get(url)

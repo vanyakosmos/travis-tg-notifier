@@ -51,7 +51,7 @@ def user_forced_hook_view(request: HttpRequest, chat_id: str):
 
 def logout_view(request: HttpRequest):
     user = request.user
-    if user.is_authenticated:
+    if user.is_authenticated and not (user.is_superuser or user.is_staff):
         user.is_active = False
         user.save()
     logout(request)
