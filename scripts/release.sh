@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
-python manage.py collectstatic
+set -e
+
+python manage.py collectstatic --noinput
 python manage.py migrate
 python manage.py setwebhook
