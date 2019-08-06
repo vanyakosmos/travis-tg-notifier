@@ -113,6 +113,7 @@ class TestUtils:
             'committed_at': '2019-08-04T00:23:38Z',
             'build_url': 'example.com',
             'compare_url': 'example.com',
+            'message': 'commit message',
         })
         res = send_report(req, chat_id='1111')
         assert 'build' in res.content.decode().lower()
@@ -128,6 +129,7 @@ class TestUtils:
             'committed_at': '2019-08-04T00:23:38Z',
             'build_url': 'example.com',
             'compare_url': 'example.com',
+            'message': 'commit message',
         })
         res = send_report(req, chat_id='1111')
         assert res.status_code == 400
@@ -136,7 +138,6 @@ class TestUtils:
         tsc = TravisSignatureChecker()
         pubs = list(tsc.gen_public_key())
         assert len(pubs) == 2
-        assert all(pubs)
 
     def test_tsc_validation(self, mocker):
         payload = '{"foo": "bar"}'
