@@ -6,6 +6,7 @@ from time import time
 from unittest.mock import Mock
 
 import pytest
+import requests
 from OpenSSL.crypto import (
     sign,
     load_privatekey,
@@ -20,8 +21,10 @@ from django.contrib.auth import get_user_model
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from telegram import Bot, Update, TelegramError
+from telegram.error import BadRequest
 
 import core.bot
+import core.utils
 from core.bot import command_start, command_webhook, bot, dispatcher
 from core.utils import (
     get_tg_auth_payload,
@@ -31,6 +34,7 @@ from core.utils import (
     send_report,
     validate_tg_auth_data,
     format_build_report,
+    format_simple_report,
 )
 
 User = get_user_model()
@@ -55,6 +59,22 @@ def generate_signature(pem_private_key, content):
     private_key = load_privatekey(FILETYPE_PEM, pem_private_key)
     signature = sign(private_key, content, str('sha1'))
     return signature
+
+
+def create_travis_payload():
+    return json.dumps({
+        'number': 13,
+        'repository': {},
+        'status_message': 'passed',
+        'author_name': 'user',
+        'duration': 13,
+        'started_at': '2019-08-04T00:23:38Z',
+        'finished_at': '2019-08-04T00:23:38Z',
+        'committed_at': '2019-08-04T00:23:38Z',
+        'build_url': 'example.com',
+        'compare_url': 'example.com',
+        'message': 'commit message',
+    })
 
 
 @pytest.mark.django_db
@@ -106,31 +126,41 @@ class TestUtils:
     def test_send_report(self, mocker):
         mocker.patch.object(TravisSignatureChecker, 'validate', return_value=True)
         req = HttpRequest()
-        req.POST['payload'] = json.dumps({
-            'duration': 5,
-            'started_at': '2019-08-04T00:23:38Z',
-            'finished_at': '2019-08-04T00:23:38Z',
-            'committed_at': '2019-08-04T00:23:38Z',
-            'build_url': 'example.com',
-            'compare_url': 'example.com',
-            'message': 'commit message',
-        })
+        req.POST['payload'] = create_travis_payload()
         res = send_report(req, chat_id='1111')
         assert 'build' in res.content.decode().lower()
         assert res.status_code == 200
 
-    def test_send_report_bad(self, mocker):
+    def test_send_report_bad_sig(self, mocker):
         mocker.patch.object(TravisSignatureChecker, 'validate', return_value=False)
         req = HttpRequest()
-        req.POST['payload'] = json.dumps({
-            'duration': 5,
-            'started_at': '2019-08-04T00:23:38Z',
-            'finished_at': '2019-08-04T00:23:38Z',
-            'committed_at': '2019-08-04T00:23:38Z',
-            'build_url': 'example.com',
-            'compare_url': 'example.com',
-            'message': 'commit message',
-        })
+        req.POST['payload'] = create_travis_payload()
+        res = send_report(req, chat_id='1111')
+        assert res.status_code == 400
+
+    def test_send_report_with_simple(self, mocker):
+        store = {'i': 0}  # or use global
+
+        def send_msg(*args, **kwargs):
+            print('send', store['i'])
+            store['i'] += 1
+            if store['i'] == 1:
+                raise BadRequest("forced error")
+
+        mocker.patch.object(Bot, 'send_message', send_msg)
+        mocker.patch.object(TravisSignatureChecker, 'validate', return_value=True)
+        mocker.spy(core.utils, 'format_simple_report')
+        req = HttpRequest()
+        req.POST['payload'] = create_travis_payload()
+        res = send_report(req, chat_id='1111')
+        assert res.status_code == 200
+        assert core.utils.format_simple_report.call_count == 1
+
+    def test_send_report_fail(self, mocker):
+        mocker.patch.object(Bot, 'send_message', side_effect=BadRequest("force error"))
+        mocker.patch.object(TravisSignatureChecker, 'validate', return_value=True)
+        req = HttpRequest()
+        req.POST['payload'] = create_travis_payload()
         res = send_report(req, chat_id='1111')
         assert res.status_code == 400
 
@@ -138,6 +168,13 @@ class TestUtils:
         tsc = TravisSignatureChecker()
         pubs = list(tsc.gen_public_key())
         assert len(pubs) == 2
+
+    def test_tsc_gen_public_key_fail(self, mocker):
+        mocker.patch.object(requests, 'get', side_effect=requests.RequestException('force error'))
+        tsc = TravisSignatureChecker()
+        pubs = list(tsc.gen_public_key())
+        assert len(pubs) == 2
+        assert all([p is None for p in pubs])
 
     def test_tsc_validation(self, mocker):
         payload = '{"foo": "bar"}'
@@ -186,6 +223,19 @@ class TestFormatReport:
         res = format_build_report(payload)
         assert 'pull request' in res.lower()
         print(res)
+
+    def test_simple(self):
+        res = format_simple_report({
+            'repository': {},
+            'number': 13,
+            'status_message': 'Passed',
+            'author_name': 'user',
+            'message': 'commit',
+            'duration': 10,
+        })
+        res = res.strip('`\n')
+        # check that there is valid objects
+        assert json.loads(res)
 
 
 @pytest.mark.django_db
@@ -265,6 +315,12 @@ class TestViews:
         res = self.client.get(url, follow=True)
         assert res.status_code == 200
         assert res.redirect_chain[-1][0] == reverse('core:user', kwargs={'user_id': '1234'})
+
+    def test_user_forced_hook_view_report(self, mocker):
+        mocker.patch.object(TravisSignatureChecker, 'validate', return_value=True)
+        url = reverse('core:forced', kwargs={'chat_id': '1234'})
+        res = self.client.post(url, data={'payload': create_travis_payload()})
+        assert res.status_code == 200
 
     def test_logout_view_anon(self):
         url = reverse('core:logout')
