@@ -1,12 +1,17 @@
 {% load core %}
-{% if status == 0 %}✅{% else %}❌{% endif %} {% if repository.url %}<a href='{{ compare_url }}'>{{ repository.owner_name }}/{{ repository.name }}</a>{% else %}<strong>{{ repository.owner_name }}/{{ repository.name }}</strong>{% endif %}
+{% if status == 0 %}✅{% else %}❌{% endif %} *{{ repository.owner_name }}/{{ repository.name }}*
 
 Build #{{ number }} {% if status == 0 %}completed successfully{% else %}failed{% endif %}
 Status: {{ status_message }}
 
-Duration: {{ duration|duration }}
-Started : {{ started_at|date:'Y/m/d H:i:s' }}
-Finished: {{ finished_at|date:'Y/m/d H:i:s' }}
+*Branch:* {{ branch }}{% if pull_request %}
+*Pull Request #{{ pull_request_number }}:* {{ pull_request_title }}{% endif %}
+*Author:* {{ author_name }}
+*Message:* {% if multiline %}
+{{ message }}{% else %}{{ message }}{% endif %}
 
-Author: {{ author_name }}
-Message: "{{ message }}"
+---
+
+Duration: {{ duration|duration }}
+Started: {{ started_at|date:'Y/m/d H:i:s' }}
+Finished: {{ finished_at|date:'Y/m/d H:i:s' }}

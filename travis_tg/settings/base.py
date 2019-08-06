@@ -150,3 +150,4 @@ if APP_URL:
     WEBHOOK_URL = '/'.join([APP_URL, 'webhook', TELEGRAM_BOT_TOKEN])
 else:
     WEBHOOK_URL = None
+CHECK_SIGNATURE = getenv('CHECK_SIGNATURE', '1') == '1'

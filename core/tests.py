@@ -30,6 +30,7 @@ from core.utils import (
     TravisSignatureChecker,
     send_report,
     validate_tg_auth_data,
+    format_build_report,
 )
 
 User = get_user_model()
@@ -160,6 +161,32 @@ class TestUtils:
         assert not tsc.validate(req)
 
 
+@pytest.mark.usefixtures('create_notification_payload')
+class TestFormatReport:
+    def test_basic(self):
+        payload = self.create_notification_payload(status=0)
+        res = format_build_report(payload)
+        print(res)
+        assert 'success' in res
+
+    def test_error(self):
+        payload = self.create_notification_payload(status=1)
+        res = format_build_report(payload)
+        print(res)
+        assert 'failed' in res
+
+    def test_multiline(self):
+        payload = self.create_notification_payload(multiline_message=True)
+        res = format_build_report(payload)
+        print(res)
+
+    def test_pull_request(self):
+        payload = self.create_notification_payload(pull_request=True)
+        res = format_build_report(payload)
+        assert 'pull request' in res.lower()
+        print(res)
+
+
 @pytest.mark.django_db
 class TestViews:
     def test_index_view(self):
@@ -279,17 +306,6 @@ class TestViews:
 
 class TestBot:
     def create_update(self, text=None, command=None):
-        # user = TGUser('1234', 'user', False, bot=)
-        # chat = Chat('1234', Chat.SUPERGROUP)
-        # msg = Message(
-        #     '1234',
-        #     user,
-        #     timezone.now(),
-        #     chat,
-        #     text=text,
-        #     bot=bot,
-        #     entities=[MessageEntity(MessageEntity.BOT_COMMAND, 0, len(c)) for c in commands],
-        # )
         return Update.de_json(
             {
                 "update_id": 111111111,

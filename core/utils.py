@@ -80,7 +80,17 @@ def get_user(data: dict):
 def format_build_report(data: dict):
     for field in ['started_at', 'finished_at', 'committed_at']:
         data[field] = dateutil.parser.parse(data[field])
+    data['multiline'] = '\n' in data['message']
+    data['message'] = mark_safe(data['message'])
     return render_to_string('report.html', context=data)
+
+
+def format_simple_report(data: dict):
+    sub = {}
+    for key in ['repository', 'number', 'status_message', 'author_name', 'message', 'duration']:
+        sub[key] = data[key]
+    text = json.dumps(sub, indent=2, ensure_ascii=False)
+    return f'```\n{text}\n```'
 
 
 def send_report(request: HttpRequest, chat_id):
@@ -88,7 +98,7 @@ def send_report(request: HttpRequest, chat_id):
         return HttpResponse('no payload', status=400)
 
     tsc = TravisSignatureChecker()
-    if not tsc.validate(request):
+    if settings.CHECK_SIGNATURE and not tsc.validate(request):
         return HttpResponse('bad signature', status=400)
 
     data = json.loads(request.POST['payload'])
@@ -97,7 +107,24 @@ def send_report(request: HttpRequest, chat_id):
         bot.send_message(
             chat_id=chat_id,
             text=text,
-            parse_mode=ParseMode.HTML,
+            parse_mode=ParseMode.MARKDOWN,
+            disable_web_page_preview=True,
+            reply_markup=InlineKeyboardMarkup.from_row([
+                InlineKeyboardButton('details', url=data['build_url']),
+                InlineKeyboardButton('diff', url=data['compare_url']),
+            ])
+        )
+    except BadRequest:
+        pass
+    else:
+        return HttpResponse(text, 'text/markdown')
+
+    try:
+        text = format_simple_report(data)
+        bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN,
             disable_web_page_preview=True,
             reply_markup=InlineKeyboardMarkup.from_row([
                 InlineKeyboardButton('details', url=data['build_url']),
@@ -106,7 +133,7 @@ def send_report(request: HttpRequest, chat_id):
         )
     except BadRequest as e:
         return HttpResponse(str(e), status=400)
-    return HttpResponse(text, 'text/html')
+    return HttpResponse(text, 'text/markdown')
 
 
 class TravisSignatureChecker:
