@@ -36,7 +36,7 @@ def create_user(request: FixtureRequest):
 @pytest.fixture(autouse=True)
 def mock_bot(mocker):
     def get_me(self):
-        self.bot = TGUser(id='1234', first_name='bot_name', is_bot=True)
+        self.bot = TGUser(id='1234', first_name='bot_name', username='test_bot', is_bot=True)
         return self.bot
 
     mocker.patch.object(Bot, 'get_me', get_me)

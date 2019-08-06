@@ -2,6 +2,8 @@ import base64
 import hashlib
 import hmac
 import json
+from time import time
+from unittest.mock import Mock
 
 import pytest
 from OpenSSL.crypto import (
@@ -17,9 +19,18 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
+from telegram import Bot, Update, TelegramError
 
-from core.utils import get_tg_auth_payload, get_user, render_index, TravisSignatureChecker, \
-    send_report
+import core.bot
+from core.bot import command_start, command_webhook, bot, dispatcher
+from core.utils import (
+    get_tg_auth_payload,
+    get_user,
+    render_index,
+    TravisSignatureChecker,
+    send_report,
+    validate_tg_auth_data,
+)
 
 User = get_user_model()
 
@@ -69,11 +80,14 @@ class TestUtils:
 
     def test_get_user(self):
         user = self.create_user(first_name='a')
-        u = get_user({'id': user.username, 'first_name': 'b'})
+        u = get_user({'id': user.username, 'first_name': 'b', 'auth_date': time()})
         assert u.id == user.id
         user.refresh_from_db()
         assert user.first_name == 'b'
         assert User.objects.count() == 1
+
+    def test_validate_tg_auth_data_no_hash(self):
+        assert not validate_tg_auth_data({})
 
     def test_verify_public_key(self):
         payload = '{"foo": "bar"}'
@@ -81,6 +95,12 @@ class TestUtils:
         signature = generate_signature(pri, payload)
         tsc = TravisSignatureChecker()
         assert tsc.validate_signature(signature, payload, pub)
+
+    def test_verify_public_key_bad_sig(self):
+        payload = '{"foo": "bar"}'
+        pub, pri = generate_keys()
+        tsc = TravisSignatureChecker()
+        assert not tsc.validate_signature(b'bad_signature', payload, pub)
 
     def test_send_report(self, mocker):
         mocker.patch.object(TravisSignatureChecker, 'validate', return_value=True)
@@ -96,6 +116,20 @@ class TestUtils:
         res = send_report(req, chat_id='1111')
         assert 'build' in res.content.decode().lower()
         assert res.status_code == 200
+
+    def test_send_report_bad(self, mocker):
+        mocker.patch.object(TravisSignatureChecker, 'validate', return_value=False)
+        req = HttpRequest()
+        req.POST['payload'] = json.dumps({
+            'duration': 5,
+            'started_at': '2019-08-04T00:23:38Z',
+            'finished_at': '2019-08-04T00:23:38Z',
+            'committed_at': '2019-08-04T00:23:38Z',
+            'build_url': 'example.com',
+            'compare_url': 'example.com',
+        })
+        res = send_report(req, chat_id='1111')
+        assert res.status_code == 400
 
     def test_tsc_gen_public_key(self):
         tsc = TravisSignatureChecker()
@@ -113,6 +147,17 @@ class TestUtils:
         req.META['HTTP_SIGNATURE'] = base64.b64encode(signature)
         mocker.patch.object(tsc, 'gen_public_key', return_value=[pub])
         assert tsc.validate(req)
+
+    def test_tsc_validation_no_public_key(self, mocker):
+        payload = '{"foo": "bar"}'
+        pub, pri = generate_keys()
+        signature = generate_signature(pri, payload)
+        tsc = TravisSignatureChecker()
+        req = HttpRequest()
+        req.POST['payload'] = payload
+        req.META['HTTP_SIGNATURE'] = base64.b64encode(signature)
+        mocker.patch.object(tsc, 'gen_public_key', return_value=[None, None])
+        assert not tsc.validate(req)
 
 
 @pytest.mark.django_db
@@ -230,3 +275,66 @@ class TestViews:
         url = reverse('core:webhook')
         res = self.client.post(url, {'update_id': '1234'}, content_type='application/json')
         assert res.status_code == 200
+
+
+class TestBot:
+    def create_update(self, text=None, command=None):
+        # user = TGUser('1234', 'user', False, bot=)
+        # chat = Chat('1234', Chat.SUPERGROUP)
+        # msg = Message(
+        #     '1234',
+        #     user,
+        #     timezone.now(),
+        #     chat,
+        #     text=text,
+        #     bot=bot,
+        #     entities=[MessageEntity(MessageEntity.BOT_COMMAND, 0, len(c)) for c in commands],
+        # )
+        return Update.de_json(
+            {
+                "update_id": 111111111,
+                "message": {
+                    "message_id": 111111,
+                    "from": {
+                        "id": 111111111,
+                        "is_bot": False,
+                        "first_name": "user",
+                    },
+                    "chat": {
+                        "id": 111111111,
+                        "first_name": "user",
+                        "type": "private"
+                    },
+                    "date": 1565092779,
+                    "text": command if command else text,
+                    "entities": [{
+                        "offset": 0,
+                        "length": len(command),
+                        "type": "bot_command"
+                    }] if command else None
+                }
+            },
+            bot,
+        )
+
+    def test_command_start(self, mocker):
+        mocker.patch.object(Bot, 'send_message')
+        mocker.spy(Bot, 'send_message')
+        command_start(Mock(), Mock())
+        assert Bot.send_message.call_count == 1
+
+    def test_command_webhook(self, mocker):
+        mocker.patch.object(Bot, 'send_message')
+        mocker.spy(Bot, 'send_message')
+        update = self.create_update('foo')
+        command_webhook(update, Mock())
+        assert settings.APP_URL in Bot.send_message.call_args[0][1]
+
+    def test_error(self, mocker):
+        mocker.patch.object(Bot, 'send_message', side_effect=TelegramError('error'))
+        mocker.spy(Bot, 'send_message')
+        mocker.spy(core.bot.logger, 'error')
+        update = self.create_update(command='/start')
+        dispatcher.process_update(update)
+        assert Bot.send_message.call_count == 1
+        assert core.bot.logger.error.call_count == 2
