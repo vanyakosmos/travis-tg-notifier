@@ -143,7 +143,8 @@ class TravisSignatureChecker:
         for public_key in self.gen_public_key():
             if not public_key:
                 continue
-            return self.validate_signature(signature, payload, public_key)
+            if self.validate_signature(signature, payload, public_key):
+                return True
         logger.debug("problem with fetching public keys")
         return False
 
