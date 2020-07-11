@@ -6,14 +6,14 @@
 
 ## Usage
 
-- go to [https://travis-tg.herokuapps.com](https://travis-tg.herokuapps.com)
+- go to [https://travis-tg.herokuapp.com](https://travis-tg.herokuapp.com)
 - login via telegram
 - use generated url as webhook in `.travis.yml`:
 
 ```
 notifications:
   webhooks:
-    - https://travis-tg.herokuapps.com/u/1234
+    - https://travis-tg.herokuapp.com/u/1234
 ```
 
 - after each build you will receive notification from [@TravisCINotifierBot](https://t.me/TravisCINotifierBot).
@@ -28,5 +28,5 @@ notifications:
 ```
 notifications:
   webhooks:
-    - https://travis-tg.herokuapps.com/u/TELEGRAM_ID/force
+    - https://travis-tg.herokuapp.com/u/TELEGRAM_ID/force
 ```
