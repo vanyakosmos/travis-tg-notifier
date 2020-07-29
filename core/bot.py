@@ -27,7 +27,7 @@ def command_start(update: Update, _: CallbackContext):
 
 
 def command_webhook(update: Update, _: CallbackContext):
-    url = reverse('core:forced', kwargs={'chat_id': update.effective_message.chat_id})
+    url = reverse('core:hook', kwargs={'chat_id': update.effective_message.chat_id})
     url = settings.APP_URL + url
     update.message.reply_markdown(
         f"`{url}`\n\n"

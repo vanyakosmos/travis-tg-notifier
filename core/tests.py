@@ -270,57 +270,32 @@ class TestViews:
         assert res.status_code == 200
         assert User.objects.get(username=data['id'])
 
-    def test_user_hook_view_404(self):
-        url = reverse('core:user', kwargs={'user_id': '1234'})
-        res = self.client.get(url)
-        assert res.status_code == 404
-
     def test_user_hook_view_another_user(self):
         self.create_user(username='1234')
 
-        url = reverse('core:user', kwargs={'user_id': '1234'})
+        url = reverse('core:hook', kwargs={'chat_id': '1234'})
         res = self.client.get(url)
         assert res.status_code == 302
 
         user = self.create_user(username='4321')
         self.client.force_login(user)
-        url = reverse('core:user', kwargs={'user_id': '1234'})
+        url = reverse('core:hook', kwargs={'chat_id': '1234'})
         res = self.client.get(url)
         assert res.status_code == 302
 
     def test_user_hook_view_self(self):
         user = self.create_user(username='1234')
         self.client.force_login(user)
-        url = reverse('core:user', kwargs={'user_id': '1234'})
+        url = reverse('core:hook', kwargs={'chat_id': '1234'})
         res = self.client.get(url)
         assert res.status_code == 200
 
     def test_user_hook_view_report_no_payload(self):
         user = self.create_user(username='1234')
         self.client.force_login(user)
-        url = reverse('core:user', kwargs={'user_id': '1234'})
+        url = reverse('core:hook', kwargs={'chat_id': '1234'})
         res = self.client.post(url)
         assert res.status_code == 400
-
-    def test_user_forced_hook_view(self):
-        url = reverse('core:forced', kwargs={'chat_id': '1234'})
-        res = self.client.get(url, follow=True)
-        assert res.status_code == 200
-        assert res.redirect_chain[-1][0] == reverse('core:index')
-
-    def test_user_forced_hook_view_self(self):
-        user = self.create_user(username='1234')
-        self.client.force_login(user)
-        url = reverse('core:forced', kwargs={'chat_id': '1234'})
-        res = self.client.get(url, follow=True)
-        assert res.status_code == 200
-        assert res.redirect_chain[-1][0] == reverse('core:user', kwargs={'user_id': '1234'})
-
-    def test_user_forced_hook_view_report(self, mocker):
-        mocker.patch.object(TravisSignatureChecker, 'validate', return_value=True)
-        url = reverse('core:forced', kwargs={'chat_id': '1234'})
-        res = self.client.post(url, data={'payload': create_travis_payload()})
-        assert res.status_code == 200
 
     def test_logout_view_anon(self):
         url = reverse('core:logout')

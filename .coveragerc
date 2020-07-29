@@ -2,7 +2,7 @@
 omit =
   manage.py
   conftest.py
-  travis_tg/*
+  config/*
   */migrations/*
   */test*
 

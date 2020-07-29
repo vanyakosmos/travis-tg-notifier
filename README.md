@@ -13,20 +13,20 @@
 ```
 notifications:
   webhooks:
-    - https://travis-tg.herokuapp.com/u/1234
+    - https://travis-tg.herokuapp.com/u/CHAT_ID
 ```
 
 - after each build you will receive notification from [@TravisCINotifierBot](https://t.me/TravisCINotifierBot).
 
 
-## Usage without telegram authentication or in groups
+## Usage without telegram authentication or in group chats
 
 - initiate dialog with [@TravisCINotifierBot](https://t.me/TravisCINotifierBot) or add it to the chat.
-- type `/webhook` and receive webhook url for current chat
+- type `/webhook` to receive webhook url for current chat
 - copy-n-paste webhook url into `.travis.yml`
 
 ```
 notifications:
   webhooks:
-    - https://travis-tg.herokuapp.com/u/TELEGRAM_ID/force
+    - https://travis-tg.herokuapp.com/u/CHAT_ID
 ```
