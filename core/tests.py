@@ -270,11 +270,6 @@ class TestViews:
         assert res.status_code == 200
         assert User.objects.get(username=data['id'])
 
-    def test_user_hook_view_404(self):
-        url = reverse('core:hook', kwargs={'chat_id': '1234'})
-        res = self.client.get(url)
-        assert res.status_code == 404
-
     def test_user_hook_view_another_user(self):
         self.create_user(username='1234')
 
