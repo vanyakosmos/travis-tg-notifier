@@ -9,5 +9,5 @@ if [[ ${1:-prod} == 'dev' ]]; then
     exec python manage.py runserver 0.0.0.0:${PORT}
 else
     echo "running PROD server..."
-    exec gunicorn travis_tg.wsgi --bind 0.0.0.0:${PORT}
+    exec gunicorn config.wsgi --bind 0.0.0.0:${PORT}
 fi
